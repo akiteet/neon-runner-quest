@@ -262,11 +262,24 @@
     .action {
       min-width: 130px;
       min-height: 42px;
+      max-width: 190px;
+      padding: 9px 13px;
       border: 1px solid rgba(71, 226, 255, 0.42);
       border-radius: 8px;
       background: rgba(71, 226, 255, 0.13);
       cursor: pointer;
+      white-space: normal;
       transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+    }
+
+    .action[hidden] {
+      display: none;
+    }
+
+    .action.upgrade {
+      min-width: 158px;
+      text-align: left;
+      line-height: 1.25;
     }
 
     .action:hover,
@@ -438,7 +451,7 @@
         <div class="mark">NQ</div>
         <div>
           <h1>Neon Runner Quest</h1>
-          <div class="tagline">Dash, slash, survive the grid, and break the boss core.</div>
+          <div class="tagline">Dash, slash, upgrade your gear, and survive the endless grid.</div>
         </div>
       </div>
       <div class="stats" aria-label="Game statistics">
@@ -446,6 +459,7 @@
         <div class="stat"><span>High</span><strong id="highValue">0</strong></div>
         <div class="stat"><span>Wave</span><strong id="waveValue">1</strong></div>
         <div class="stat"><span>KOs</span><strong id="koValue">0</strong></div>
+        <div class="stat"><span>Gear</span><strong id="gearValue">0</strong></div>
       </div>
     </header>
 
@@ -474,10 +488,11 @@
       <div class="overlay show" id="overlay">
         <div class="panel">
           <h2 id="overlayTitle">Neon Runner Quest</h2>
-          <p id="overlayText">Clear five enemy waves, grab unstable upgrades, and defeat the prism boss before the arena burns out.</p>
+          <p id="overlayText">Survive endless enemy waves, choose upgrades after each clear, and break every fifth-wave prism boss.</p>
           <div class="panel-actions">
             <button class="action" id="primaryAction" type="button">Start Run</button>
             <button class="action secondary" id="secondaryAction" type="button">How To Play</button>
+            <button class="action secondary" id="tertiaryAction" type="button" hidden>Upgrade</button>
           </div>
         </div>
       </div>
@@ -511,10 +526,12 @@
     const overlayText = document.getElementById("overlayText");
     const primaryAction = document.getElementById("primaryAction");
     const secondaryAction = document.getElementById("secondaryAction");
+    const tertiaryAction = document.getElementById("tertiaryAction");
     const scoreValue = document.getElementById("scoreValue");
     const highValue = document.getElementById("highValue");
     const waveValue = document.getElementById("waveValue");
     const koValue = document.getElementById("koValue");
+    const gearValue = document.getElementById("gearValue");
     const healthFill = document.getElementById("healthFill");
     const energyFill = document.getElementById("energyFill");
     const healthText = document.getElementById("healthText");
@@ -552,6 +569,13 @@
       energy: "assets/pickup-energy.svg",
       shield: "assets/pickup-shield.svg"
     });
+    const UPGRADE_DEFS = [
+      { id: "blaster", name: "Pulse Blaster", desc: "+shot damage and speed" },
+      { id: "blade", name: "Arc Blade", desc: "+slash damage and reach" },
+      { id: "reactor", name: "Flux Reactor", desc: "+energy cap and regen" },
+      { id: "armor", name: "Carbon Armor", desc: "+max health and repair" },
+      { id: "thruster", name: "Dash Thruster", desc: "+speed, cheaper dash" }
+    ];
 
     let highScore = readHighScore();
     let game;
@@ -591,6 +615,15 @@
         time: 0,
         waveBanner: 0,
         spawnDelay: 0,
+        clearedWaves: 0,
+        upgradeChoices: [],
+        gear: {
+          blaster: 0,
+          blade: 0,
+          reactor: 0,
+          armor: 0,
+          thruster: 0
+        },
         pickups: [],
         projectiles: [],
         enemyShots: [],
@@ -647,7 +680,7 @@
       game.state = "title";
       showOverlay(
         "Neon Runner Quest",
-        "Clear five enemy waves, grab unstable upgrades, and defeat the prism boss before the arena burns out.",
+        "Survive endless waves, pick one gear upgrade after each clear, and face a prism boss every fifth wave.",
         "Start Run",
         "How To Play"
       );
@@ -656,14 +689,14 @@
     function showHelp() {
       showOverlay(
         "How To Play",
-        "Move with WASD or arrows. Press J or click to fire a pulse and slash nearby enemies. Press K or Shift to dash through danger. Pickups restore health, energy, or shield.",
+        "Move with WASD or arrows. Press J or click to fire and slash. Press K or Shift to dash. Clear a wave to choose one equipment upgrade before the next wave begins.",
         "Start Run",
         "Back"
       );
     }
 
     function togglePause() {
-      if (!game || game.state === "title" || game.state === "gameover" || game.state === "victory") return;
+      if (!game || game.state === "title" || game.state === "gameover" || game.state === "upgrade") return;
       if (game.state === "paused") {
         game.state = "playing";
         hideOverlay();
@@ -673,21 +706,25 @@
       }
     }
 
-    function finishRun(victory) {
+    function finishRun() {
       saveHighScore(game.score);
-      game.state = victory ? "victory" : "gameover";
-      const title = victory ? "Core Broken" : "Run Lost";
-      const text = victory
-        ? `Victory. Score ${game.score}. High score ${highScore}.`
-        : `You reached wave ${game.wave} with ${game.score} points. High score ${highScore}.`;
+      game.state = "gameover";
+      const text = `You survived ${game.clearedWaves} full waves, reached wave ${game.wave}, and scored ${game.score}. High score ${highScore}.`;
+      const title = "Run Lost";
       showOverlay(title, text, "Run Again", "How To Play");
     }
 
-    function showOverlay(title, text, primary, secondary) {
+    function showOverlay(title, text, primary, secondary, tertiary) {
       overlayTitle.textContent = title;
       overlayText.textContent = text;
       primaryAction.textContent = primary;
       secondaryAction.textContent = secondary;
+      tertiaryAction.textContent = tertiary || "";
+      tertiaryAction.hidden = !tertiary;
+      for (const button of [primaryAction, secondaryAction, tertiaryAction]) {
+        button.classList.remove("upgrade");
+        delete button.dataset.upgradeId;
+      }
       overlay.classList.add("show");
     }
 
@@ -700,18 +737,19 @@
       game.enemies.length = 0;
       game.enemyShots.length = 0;
       game.waveBanner = 2.1;
-      const isBoss = wave === 5;
+      const isBoss = isBossWave(wave);
 
       if (isBoss) {
         game.enemies.push(makeEnemy("boss", WORLD.w / 2, 116, wave));
-        for (let i = 0; i < 2; i += 1) {
-          const angle = (Math.PI * 2 * i) / 4;
+        const guards = Math.min(4, 1 + Math.floor(wave / 10));
+        for (let i = 0; i < guards; i += 1) {
+          const angle = (Math.PI * 2 * i) / guards;
           game.enemies.push(makeEnemy("drone", WORLD.w / 2 + Math.cos(angle) * 210, 160 + Math.sin(angle) * 86, wave));
         }
         return;
       }
 
-      const count = 4 + wave * 2;
+      const count = Math.min(18, 4 + Math.floor(wave * 1.6));
       const types = ["chaser", "chaser", "shooter", "skimmer"];
       for (let i = 0; i < count; i += 1) {
         const edge = i % 4;
@@ -730,6 +768,9 @@
     }
 
     function makeEnemy(type, x, y, wave) {
+      const hpTier = wave;
+      const speedTier = Math.min(wave, 12);
+      const bossTier = Math.floor(wave / 5);
       const base = {
         type,
         x,
@@ -742,11 +783,11 @@
         dead: false
       };
 
-      if (type === "chaser") return { ...base, r: 15, hp: 26 + wave * 5, maxHp: 26 + wave * 5, speed: 72 + wave * 7, damage: 10, score: 90 };
-      if (type === "shooter") return { ...base, r: 17, hp: 23 + wave * 5, maxHp: 23 + wave * 5, speed: 46 + wave * 4, damage: 8, score: 120 };
-      if (type === "skimmer") return { ...base, r: 12, hp: 19 + wave * 4, maxHp: 19 + wave * 4, speed: 118 + wave * 8, damage: 9, score: 110 };
-      if (type === "drone") return { ...base, r: 13, hp: 30 + wave * 5, maxHp: 30 + wave * 5, speed: 78, damage: 8, score: 130 };
-      return { ...base, r: 42, hp: 430, maxHp: 430, speed: 48, damage: 16, score: 1200, phase: 0, pulse: 1.75 };
+      if (type === "chaser") return { ...base, r: 15, hp: 26 + hpTier * 5, maxHp: 26 + hpTier * 5, speed: 72 + speedTier * 6, damage: 10 + Math.floor(wave / 8), score: 90 + wave * 4 };
+      if (type === "shooter") return { ...base, r: 17, hp: 23 + hpTier * 5, maxHp: 23 + hpTier * 5, speed: 46 + speedTier * 4, damage: 8 + Math.floor(wave / 9), score: 120 + wave * 5 };
+      if (type === "skimmer") return { ...base, r: 12, hp: 19 + hpTier * 4, maxHp: 19 + hpTier * 4, speed: 118 + speedTier * 7, damage: 9 + Math.floor(wave / 9), score: 110 + wave * 5 };
+      if (type === "drone") return { ...base, r: 13, hp: 30 + hpTier * 5, maxHp: 30 + hpTier * 5, speed: 78 + speedTier * 3, damage: 8 + Math.floor(wave / 10), score: 130 + wave * 6 };
+      return { ...base, r: 42, hp: 360 + wave * 42, maxHp: 360 + wave * 42, speed: 44 + bossTier * 3, damage: 14 + bossTier * 2, score: 1200 + wave * 80, phase: 0, pulse: 1.75 };
     }
 
     function fireAttack() {
@@ -755,30 +796,42 @@
       if (p.attackCd > 0) return;
 
       const aim = aimVector();
+      const blaster = gearLevel("blaster");
+      const blade = gearLevel("blade");
+      const shotCount = Math.min(3, 1 + Math.floor(blaster / 4));
+      const baseAngle = Math.atan2(aim.y, aim.x);
+      const shotDamage = 22 + blaster * 4 + p.combo * 1.5;
+      const shotSpeed = 560 + blaster * 22;
       p.lastDirX = aim.x;
       p.lastDirY = aim.y;
-      p.attackCd = 0.22;
+      p.attackCd = Math.max(0.12, 0.22 - blaster * 0.008 - blade * 0.004);
       p.combo = Math.min(9, p.combo + 1);
 
       game.slashes.push({
         x: p.x + aim.x * 18,
         y: p.y + aim.y * 18,
-        r: 56,
-        life: 0.16,
-        maxLife: 0.16,
+        r: 56 + blade * 5,
+        life: 0.16 + Math.min(0.08, blade * 0.006),
+        maxLife: 0.16 + Math.min(0.08, blade * 0.006),
+        damage: 16 + blade * 5,
         dirX: aim.x,
         dirY: aim.y
       });
 
-      game.projectiles.push({
-        x: p.x + aim.x * 21,
-        y: p.y + aim.y * 21,
-        vx: aim.x * 560,
-        vy: aim.y * 560,
-        r: 6,
-        life: 0.8,
-        damage: 22 + p.combo * 1.5
-      });
+      for (let i = 0; i < shotCount; i += 1) {
+        const angle = baseAngle + (i - (shotCount - 1) / 2) * 0.15;
+        const sx = Math.cos(angle);
+        const sy = Math.sin(angle);
+        game.projectiles.push({
+          x: p.x + sx * 21,
+          y: p.y + sy * 21,
+          vx: sx * shotSpeed,
+          vy: sy * shotSpeed,
+          r: 6 + Math.min(3, blaster * 0.22),
+          life: 0.8 + blaster * 0.025,
+          damage: shotDamage
+        });
+      }
 
       burst(p.x + aim.x * 24, p.y + aim.y * 24, palette.cyan, 8, 120);
     }
@@ -786,17 +839,19 @@
     function tryDash() {
       if (!game || game.state !== "playing") return;
       const p = game.player;
-      if (p.dashCd > 0 || p.energy < 24) return;
+      const thruster = gearLevel("thruster");
+      const dashCost = Math.max(14, 24 - thruster * 2);
+      if (p.dashCd > 0 || p.energy < dashCost) return;
       const move = movementVector();
       const dx = move.x || p.lastDirX;
       const dy = move.y || p.lastDirY;
       const len = Math.hypot(dx, dy) || 1;
       p.lastDirX = dx / len;
       p.lastDirY = dy / len;
-      p.dashTime = 0.15;
-      p.dashCd = 1.05;
-      p.invuln = 0.26;
-      p.energy -= 24;
+      p.dashTime = 0.15 + Math.min(0.08, thruster * 0.01);
+      p.dashCd = Math.max(0.58, 1.05 - thruster * 0.07);
+      p.invuln = 0.26 + Math.min(0.16, thruster * 0.02);
+      p.energy -= dashCost;
       game.shake = Math.max(game.shake, 4);
       burst(p.x, p.y, palette.amber, 18, 220);
     }
@@ -850,20 +905,100 @@
       game.waveBanner = Math.max(0, game.waveBanner - dt);
 
       if (game.player.hp <= 0) {
-        finishRun(false);
+        finishRun();
       } else if (game.enemies.length === 0) {
-        if (game.wave >= 5) {
-          finishRun(true);
-        } else {
-          game.spawnDelay += dt;
-          if (game.spawnDelay > 0.65) {
-            game.spawnDelay = 0;
-            spawnWave(game.wave + 1);
-          }
+        game.spawnDelay += dt;
+        if (game.spawnDelay > 0.65) {
+          game.spawnDelay = 0;
+          completeWave();
         }
       }
 
       updateHud();
+    }
+
+    function completeWave() {
+      const p = game.player;
+      const bossBonus = isBossWave(game.wave) ? 500 + game.wave * 30 : 0;
+      game.clearedWaves = Math.max(game.clearedWaves, game.wave);
+      game.score += 220 + game.wave * 45 + bossBonus;
+      p.hp = clamp(p.hp + (isBossWave(game.wave) ? 28 : 12), 0, p.maxHp);
+      showUpgradeChoices();
+      updateHud();
+    }
+
+    function showUpgradeChoices() {
+      game.state = "upgrade";
+      game.enemyShots.length = 0;
+      game.projectiles.length = 0;
+      game.slashes.length = 0;
+      game.upgradeChoices = pickUpgradeChoices();
+      const labels = game.upgradeChoices.map(formatUpgradeChoice);
+      showOverlay(
+        `Wave ${game.wave} Cleared`,
+        `Choose one upgrade. Boss waves arrive every 5 waves. Current gear level: ${totalGearLevel()}.`,
+        labels[0],
+        labels[1],
+        labels[2]
+      );
+      [primaryAction, secondaryAction, tertiaryAction].forEach((button, index) => {
+        const choice = game.upgradeChoices[index];
+        button.classList.add("upgrade");
+        button.dataset.upgradeId = choice.id;
+      });
+    }
+
+    function pickUpgradeChoices() {
+      return [...UPGRADE_DEFS]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 3);
+    }
+
+    function formatUpgradeChoice(def) {
+      return `${def.name} Lv ${gearLevel(def.id) + 1}: ${def.desc}`;
+    }
+
+    function chooseUpgrade(button) {
+      if (!game || game.state !== "upgrade" || !button.dataset.upgradeId) return false;
+      applyUpgrade(button.dataset.upgradeId);
+      hideOverlay();
+      spawnWave(game.wave + 1);
+      game.state = "playing";
+      updateHud();
+      return true;
+    }
+
+    function applyUpgrade(id) {
+      const p = game.player;
+      game.gear[id] += 1;
+      game.score += 120 + totalGearLevel() * 18;
+
+      if (id === "armor") {
+        p.maxHp += 18;
+        p.hp = clamp(p.hp + 38, 0, p.maxHp);
+      } else if (id === "reactor") {
+        p.maxEnergy += 14;
+        p.energy = p.maxEnergy;
+      } else if (id === "thruster") {
+        p.energy = clamp(p.energy + 24, 0, p.maxEnergy);
+      } else if (id === "blade") {
+        p.hp = clamp(p.hp + 10, 0, p.maxHp);
+      } else if (id === "blaster") {
+        p.energy = clamp(p.energy + 16, 0, p.maxEnergy);
+      }
+    }
+
+    function gearLevel(id) {
+      return game && game.gear ? game.gear[id] || 0 : 0;
+    }
+
+    function totalGearLevel() {
+      if (!game || !game.gear) return 0;
+      return Object.values(game.gear).reduce((sum, level) => sum + level, 0);
+    }
+
+    function isBossWave(wave) {
+      return wave > 0 && wave % 5 === 0;
     }
 
     function updateStars(dt) {
@@ -880,7 +1015,7 @@
       const p = game.player;
       const move = movementVector();
       const dashBoost = p.dashTime > 0 ? 3.15 : 1;
-      const speed = p.speed * dashBoost;
+      const speed = (p.speed + gearLevel("thruster") * 10) * dashBoost;
 
       p.x += move.x * speed * dt;
       p.y += move.y * speed * dt;
@@ -891,7 +1026,7 @@
 
       p.x = clamp(p.x, p.r + 8, WORLD.w - p.r - 8);
       p.y = clamp(p.y, p.r + 8, WORLD.h - p.r - 8);
-      p.energy = clamp(p.energy + dt * 23, 0, p.maxEnergy);
+      p.energy = clamp(p.energy + dt * (23 + gearLevel("reactor") * 5), 0, p.maxEnergy);
       p.dashCd = Math.max(0, p.dashCd - dt);
       p.dashTime = Math.max(0, p.dashTime - dt);
       p.invuln = Math.max(0, p.invuln - dt);
@@ -1051,7 +1186,7 @@
           const dx = enemy.x - slash.x;
           const dy = enemy.y - slash.y;
           if (Math.hypot(dx, dy) < slash.r + enemy.r) {
-            damageEnemy(enemy, 16);
+            damageEnemy(enemy, slash.damage);
             const len = Math.hypot(dx, dy) || 1;
             enemy.x += (dx / len) * 6;
             enemy.y += (dy / len) * 6;
@@ -1473,7 +1608,7 @@
       ctx.font = "800 46px Inter, system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      const text = game.wave === 5 ? "BOSS WAVE" : `WAVE ${game.wave}`;
+      const text = isBossWave(game.wave) ? `BOSS WAVE ${game.wave}` : `WAVE ${game.wave}`;
       ctx.fillText(text, WORLD.w / 2, WORLD.h / 2 - 34);
       ctx.font = "500 17px Inter, system-ui, sans-serif";
       ctx.fillStyle = "rgba(238,246,255,0.78)";
@@ -1548,6 +1683,7 @@
       highValue.textContent = String(Math.floor(Math.max(highScore, game.score)));
       waveValue.textContent = String(game.wave);
       koValue.textContent = String(game.ko);
+      gearValue.textContent = String(totalGearLevel());
       healthText.textContent = `${Math.ceil(p.hp)}/${p.maxHp}`;
       energyText.textContent = `${Math.ceil(p.energy)}/${p.maxEnergy}`;
       healthFill.style.transform = `scaleX(${clamp(p.hp / p.maxHp, 0, 1)})`;
@@ -1622,7 +1758,8 @@
     });
 
     primaryAction.addEventListener("click", () => {
-      if (!game || game.state === "title" || game.state === "gameover" || game.state === "victory") {
+      if (chooseUpgrade(primaryAction)) return;
+      if (!game || game.state === "title" || game.state === "gameover") {
         startRun();
       } else if (game.state === "paused") {
         togglePause();
@@ -1632,6 +1769,7 @@
     });
 
     secondaryAction.addEventListener("click", () => {
+      if (chooseUpgrade(secondaryAction)) return;
       if (secondaryAction.textContent === "Back") {
         showTitle();
         return;
@@ -1643,6 +1781,10 @@
       } else {
         showHelp();
       }
+    });
+
+    tertiaryAction.addEventListener("click", () => {
+      chooseUpgrade(tertiaryAction);
     });
 
     stick.addEventListener("pointerdown", (event) => {
