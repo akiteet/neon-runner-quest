@@ -10,7 +10,7 @@ Neon Runner Quest is a dependency-free HTML5 Canvas action game. Open `index.htm
 - Upgrade Pulse Blaster, Arc Blade, Flux Reactor, Carbon Armor, and Dash Thruster during each run.
 - Pick up health, energy, and shield drops.
 - Keep moving, use dash invulnerability, and chain attacks for higher damage.
-- The endless balance uses capped enemy counts, scaling enemy stats, and repeat boss encounters.
+- The endless balance keeps early waves approachable, then ramps enemy pressure after wave 10 with stronger boss loops and diminishing late gear returns.
 - The high score is stored in `localStorage` with the key `neonRunnerQuestHighScore`.
 
 ## Controls
