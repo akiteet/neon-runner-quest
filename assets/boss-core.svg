@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <defs>
+    <radialGradient id="core" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".25" stop-color="#ffd36a"/>
+      <stop offset=".58" stop-color="#ff5f7e"/>
+      <stop offset="1" stop-color="#511735"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="20" x2="140" y1="20" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#47e2ff"/>
+      <stop offset=".5" stop-color="#ffd36a"/>
+      <stop offset="1" stop-color="#ff5f7e"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <path d="M80 8l62 36v72l-62 36-62-36V44z" fill="#130912" stroke="url(#ring)" stroke-width="5" filter="url(#glow)"/>
+  <path d="M80 24l45 26v52l-45 26-45-26V50z" fill="url(#core)"/>
+  <path d="M80 41l33 39-33 39-33-39z" fill="#080912" opacity=".72"/>
+  <circle cx="80" cy="80" r="22" fill="#fff4cf"/>
+  <circle cx="80" cy="80" r="10" fill="#ff5f7e"/>
+  <path d="M20 80h28M112 80h28M80 20v28M80 112v28" stroke="#47e2ff" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+</svg>
