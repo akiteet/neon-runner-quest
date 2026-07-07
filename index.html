@@ -602,11 +602,11 @@
           x: WORLD.w / 2,
           y: WORLD.h / 2 + 120,
           r: 15,
-          hp: 100,
-          maxHp: 100,
+          hp: 130,
+          maxHp: 130,
           energy: 100,
           maxEnergy: 100,
-          speed: 245,
+          speed: 260,
           dashCd: 0,
           dashTime: 0,
           invuln: 0,
@@ -704,14 +704,14 @@
 
       if (isBoss) {
         game.enemies.push(makeEnemy("boss", WORLD.w / 2, 116, wave));
-        for (let i = 0; i < 4; i += 1) {
+        for (let i = 0; i < 2; i += 1) {
           const angle = (Math.PI * 2 * i) / 4;
           game.enemies.push(makeEnemy("drone", WORLD.w / 2 + Math.cos(angle) * 210, 160 + Math.sin(angle) * 86, wave));
         }
         return;
       }
 
-      const count = 5 + wave * 3;
+      const count = 4 + wave * 2;
       const types = ["chaser", "chaser", "shooter", "skimmer"];
       for (let i = 0; i < count; i += 1) {
         const edge = i % 4;
@@ -737,16 +737,16 @@
         vx: 0,
         vy: 0,
         hit: 0,
-        shoot: Math.random() * 1.2 + 0.7,
+        shoot: Math.random() * 1.45 + 1.05,
         turn: Math.random() * Math.PI * 2,
         dead: false
       };
 
-      if (type === "chaser") return { ...base, r: 15, hp: 30 + wave * 7, maxHp: 30 + wave * 7, speed: 86 + wave * 9, damage: 14, score: 90 };
-      if (type === "shooter") return { ...base, r: 17, hp: 26 + wave * 6, maxHp: 26 + wave * 6, speed: 54 + wave * 5, damage: 10, score: 120 };
-      if (type === "skimmer") return { ...base, r: 12, hp: 22 + wave * 5, maxHp: 22 + wave * 5, speed: 145 + wave * 10, damage: 12, score: 110 };
-      if (type === "drone") return { ...base, r: 13, hp: 35 + wave * 6, maxHp: 35 + wave * 6, speed: 92, damage: 11, score: 130 };
-      return { ...base, r: 42, hp: 520, maxHp: 520, speed: 58, damage: 22, score: 1200, phase: 0, pulse: 1.4 };
+      if (type === "chaser") return { ...base, r: 15, hp: 26 + wave * 5, maxHp: 26 + wave * 5, speed: 72 + wave * 7, damage: 10, score: 90 };
+      if (type === "shooter") return { ...base, r: 17, hp: 23 + wave * 5, maxHp: 23 + wave * 5, speed: 46 + wave * 4, damage: 8, score: 120 };
+      if (type === "skimmer") return { ...base, r: 12, hp: 19 + wave * 4, maxHp: 19 + wave * 4, speed: 118 + wave * 8, damage: 9, score: 110 };
+      if (type === "drone") return { ...base, r: 13, hp: 30 + wave * 5, maxHp: 30 + wave * 5, speed: 78, damage: 8, score: 130 };
+      return { ...base, r: 42, hp: 430, maxHp: 430, speed: 48, damage: 16, score: 1200, phase: 0, pulse: 1.75 };
     }
 
     function fireAttack() {
@@ -891,7 +891,7 @@
 
       p.x = clamp(p.x, p.r + 8, WORLD.w - p.r - 8);
       p.y = clamp(p.y, p.r + 8, WORLD.h - p.r - 8);
-      p.energy = clamp(p.energy + dt * 15, 0, p.maxEnergy);
+      p.energy = clamp(p.energy + dt * 23, 0, p.maxEnergy);
       p.dashCd = Math.max(0, p.dashCd - dt);
       p.dashTime = Math.max(0, p.dashTime - dt);
       p.invuln = Math.max(0, p.invuln - dt);
@@ -944,8 +944,8 @@
           enemy.vy = (ny * push + nx * side) * enemy.speed;
           enemy.shoot -= dt;
           if (enemy.shoot <= 0) {
-            enemy.shoot = enemy.type === "drone" ? 1.25 : 1.55;
-            shootAt(enemy.x, enemy.y, nx, ny, 225, enemy.type === "drone" ? 8 : 10, palette.violet);
+            enemy.shoot = enemy.type === "drone" ? 1.75 : 2.05;
+            shootAt(enemy.x, enemy.y, nx, ny, 185, enemy.type === "drone" ? 6 : 8, palette.violet);
           }
         } else if (enemy.type === "skimmer") {
           const side = Math.sin(enemy.turn * 2.6) * 0.9;
@@ -969,30 +969,30 @@
       const orbit = Math.sin(game.time * 1.2) * 0.55;
       const desired = enemy.phase > 0.52 ? 205 : 260;
       const push = dist < desired ? -1 : 1;
-      enemy.vx = (nx * push + -ny * orbit) * (enemy.speed + enemy.phase * 44);
-      enemy.vy = (ny * push + nx * orbit) * (enemy.speed + enemy.phase * 44);
+      enemy.vx = (nx * push + -ny * orbit) * (enemy.speed + enemy.phase * 32);
+      enemy.vy = (ny * push + nx * orbit) * (enemy.speed + enemy.phase * 32);
       enemy.shoot -= dt;
       enemy.pulse -= dt;
 
       if (enemy.shoot <= 0) {
-        enemy.shoot = enemy.phase > 0.52 ? 0.62 : 0.88;
-        const spread = enemy.phase > 0.52 ? 0.32 : 0.2;
+        enemy.shoot = enemy.phase > 0.52 ? 1.0 : 1.25;
+        const spread = enemy.phase > 0.52 ? 0.28 : 0.18;
         for (let i = -1; i <= 1; i += 1) {
           const a = Math.atan2(ny, nx) + i * spread;
-          shootAt(enemy.x, enemy.y, Math.cos(a), Math.sin(a), 255 + enemy.phase * 55, 12, palette.rose);
+          shootAt(enemy.x, enemy.y, Math.cos(a), Math.sin(a), 215 + enemy.phase * 40, 9, palette.rose);
         }
       }
 
       if (enemy.pulse <= 0) {
-        enemy.pulse = enemy.phase > 0.52 ? 1.15 : 1.55;
-        const count = enemy.phase > 0.52 ? 14 : 10;
+        enemy.pulse = enemy.phase > 0.52 ? 1.7 : 2.1;
+        const count = enemy.phase > 0.52 ? 10 : 8;
         for (let i = 0; i < count; i += 1) {
           const a = (Math.PI * 2 * i) / count + game.time * 0.4;
-          shootAt(enemy.x, enemy.y, Math.cos(a), Math.sin(a), 185, 9, palette.amber);
+          shootAt(enemy.x, enemy.y, Math.cos(a), Math.sin(a), 155, 7, palette.amber);
         }
       }
 
-      if (enemy.phase > 0.5 && game.enemies.filter((item) => item.type === "drone").length < 2) {
+      if (enemy.phase > 0.58 && game.enemies.filter((item) => item.type === "drone").length < 1) {
         const angle = Math.random() * Math.PI * 2;
         game.enemies.push(makeEnemy("drone", p.x + Math.cos(angle) * 260, p.y + Math.sin(angle) * 190, game.wave));
       }
@@ -1110,14 +1110,14 @@
       const p = game.player;
       if (p.shield > 0) amount *= 0.45;
       p.hp = Math.max(0, p.hp - Math.round(amount));
-      p.invuln = 0.55;
+      p.invuln = 0.82;
       p.combo = 0;
       game.shake = Math.max(game.shake, 9);
       burst(p.x, p.y, palette.rose, 24, 260);
     }
 
     function maybeDrop(enemy) {
-      const chance = enemy.type === "boss" ? 1 : 0.34;
+      const chance = enemy.type === "boss" ? 1 : 0.48;
       if (Math.random() > chance) return;
       const roll = Math.random();
       const type = roll < 0.34 ? "health" : roll < 0.7 ? "energy" : "shield";
@@ -1134,15 +1134,15 @@
     function applyPickup(pickup) {
       const p = game.player;
       if (pickup.type === "health") {
-        p.hp = clamp(p.hp + 24, 0, p.maxHp);
+        p.hp = clamp(p.hp + 34, 0, p.maxHp);
         game.score += 70;
         burst(pickup.x, pickup.y, palette.lime, 24, 180);
       } else if (pickup.type === "energy") {
-        p.energy = clamp(p.energy + 38, 0, p.maxEnergy);
+        p.energy = clamp(p.energy + 48, 0, p.maxEnergy);
         game.score += 55;
         burst(pickup.x, pickup.y, palette.cyan, 24, 180);
       } else {
-        p.shield = 6;
+        p.shield = 8;
         game.score += 85;
         burst(pickup.x, pickup.y, palette.amber, 28, 190);
       }
